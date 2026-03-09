@@ -15,30 +15,35 @@ const BottomNav = () => {
   ];
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-      <nav className="w-full max-w-[480px] bg-white/90 backdrop-blur-xl border-t border-gray-200/50 flex justify-around items-center px-4 py-3 pb-safe pointer-events-auto shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] rounded-t-3xl">
+    // 🚀 เปลี่ยนเป็น Floating Pill (แคปซูลลอยตัว) ห่างจากขอบล่าง 6px
+    <div className="lg:hidden fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+      <nav className="w-full max-w-md bg-white/80 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-slate-200/50 flex justify-between items-center px-2 py-2 pointer-events-auto rounded-[32px]">
         {TABS.map(({ id, label, Icon }) => {
           const isActive = location.pathname === id || (id !== '/' && location.pathname.startsWith(id));
 
-          // ✅ แก้ไข: ลบเงื่อนไขพิเศษของปุ่ม '/scan' ออก เพื่อให้ทุกปุ่มใช้รูปแบบเดียวกัน
           return (
             <button 
               key={id} 
               onClick={() => navigate(id)} 
-              className="flex-1 flex flex-col items-center justify-center gap-1.5 py-1 transition-all active:scale-95 outline-none group relative"
+              className={`relative flex-1 flex flex-col items-center justify-center py-2.5 rounded-2xl transition-all duration-300 ease-out active:scale-95 outline-none group ${
+                isActive ? 'bg-emerald-50/80' : 'hover:bg-slate-50/50'
+              }`}
             >
-              {/* ไอคอนพร้อมแสงฟุ้งเมื่อเลือก */}
               <div className="relative">
-                <div className={`absolute inset-0 bg-emerald-400 rounded-full blur-lg opacity-0 transition-opacity duration-300 ${isActive ? 'opacity-30 scale-150' : ''}`}></div>
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} className={`relative z-10 transition-all duration-300 ${isActive ? 'text-emerald-600 scale-110' : 'text-gray-400 group-hover:text-gray-500'}`} />
+                <Icon 
+                  size={22} 
+                  strokeWidth={isActive ? 2.5 : 2} 
+                  className={`relative z-10 transition-all duration-300 ${
+                    isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-500'
+                  }`} 
+                />
               </div>
               
-              <span className={`text-[10px] font-bold transition-all duration-300 ${
-                isActive ? 'text-emerald-700' : 'text-gray-400'
+              <span className={`text-[10px] font-bold mt-1 transition-all duration-300 font-['IBM_Plex_Sans_Thai'] tracking-wide ${
+                isActive ? 'text-emerald-700' : 'text-slate-400'
               }`}>
                 {label}
               </span>
-              {/* ✅ แก้ไข: ลบจุดสีเขียว (div) ที่เคยอยู่ตรงนี้ออกแล้วครับ */}
             </button>
           );
         })}
