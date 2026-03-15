@@ -1,5 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 
 // นำเข้า Pages
 import HomePage from './pages/HomePage';
@@ -18,40 +18,62 @@ import BottomNav from './components/layout/BottomNav';
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) {
-    return <Navigate to="/login" replace />; // ถ้าไม่มี Token ให้ดีดไป Login
+    return <Navigate to="/login" replace />;
   }
   return children;
 };
 
-function App() {
-  const token = localStorage.getItem('token');
+// ✅ Layout wrapper ที่คอย reactive ต่อการเปลี่ยนแปลง token
+const AppLayout = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const location = useLocation();
+
+  // อัปเดตสถานะ login เมื่อ route เปลี่ยน (ครอบคลุม login/logout)
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem('token'));
+  }, [location]);
+
+  // ฟัง storage event สำหรับกรณี logout จากแท็บอื่น
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setIsLoggedIn(!!localStorage.getItem('token'));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50 font-sans">
-        
-        {/* ✅ โชว์ TopNav เฉพาะตอนที่มี Token เท่านั้น */}
-        {token && <TopNav />}
+    <div className="min-h-screen bg-gray-50 font-sans">
 
-        <div className={token ? "pb-24 pt-0" : "pt-0"}>
-          <Routes>
-            {/* 🔒 หน้าที่ต้องล็อกอินก่อนเข้า */}
-            <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-            <Route path="/scan" element={<ProtectedRoute><ScanPage /></ProtectedRoute>} />
-            <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
-            <Route path="/history/:id" element={<ProtectedRoute><HistoryDetailPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      {/* ✅ TopNav แสดงเฉพาะเมื่อ login แล้วเท่านั้น */}
+      {isLoggedIn && <TopNav />}
 
-            {/* 🔓 หน้าที่เข้าได้เลยไม่ต้องล็อกอิน */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/knowledge" element={<KnowledgePage />} />
-          </Routes>
-        </div>
+      <div className={isLoggedIn ? "pb-24 pt-0" : "pt-0"}>
+        <Routes>
+          {/* 🔒 หน้าที่ต้องล็อกอินก่อนเข้า */}
+          <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route path="/scan" element={<ProtectedRoute><ScanPage /></ProtectedRoute>} />
+          <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+          <Route path="/history/:id" element={<ProtectedRoute><HistoryDetailPage /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/knowledge" element={<ProtectedRoute><KnowledgePage /></ProtectedRoute>} />
 
-        {/* ✅ โชว์ BottomNav เฉพาะตอนที่มี Token เท่านั้น */}
-        {token && <BottomNav />}
+          {/* 🔓 หน้าที่เข้าได้โดยไม่ต้องล็อกอิน */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+        </Routes>
       </div>
+
+      {/* ✅ BottomNav แสดงเฉพาะเมื่อ login แล้วเท่านั้น */}
+      {isLoggedIn && <BottomNav />}
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <AppLayout />
     </Router>
   );
 }

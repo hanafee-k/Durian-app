@@ -1,24 +1,11 @@
-/* 1. เรียก Font Sarabun มาก่อนเป็นอันดับแรก (ต้องอยู่บนสุด!) */
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+/* ใส่ไว้บรรทัดบนสุดของไฟล์ index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Prompt:wght@400;500;600;700;800;900&family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
 
-/* 2. เรียก Tailwind CSS */
 @import "tailwindcss";
 
-/* 3. ตั้งค่าพื้นฐาน */
+/* บังคับให้ทั้งโปรเจกต์รู้จัก font-sans พื้นฐานเป็น Inter */
 @layer base {
-  html {
-    font-family: 'Sarabun', sans-serif;
+  .font-sans {
+    font-family: 'Inter', sans-serif;
   }
-  
-  body {
-    background-color: #f3f4f6;
-    color: #1f2937;
-  }
-}
-
-/* 4. ตั้งค่า Theme สี */
-@theme {
-  --color-durian-green: #4CAF50;
-  --color-durian-dark: #2E7D32;
-  --color-durian-light: #E8F5E9;
 }
