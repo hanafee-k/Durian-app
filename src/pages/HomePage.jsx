@@ -8,7 +8,7 @@ import {
   Sun, CloudRain, Cloud, CloudSun, Sparkles, Shield, ArrowRight
 } from 'lucide-react';
 
-const API_URL = "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const WEATHER_API_KEY = "bd3ba81430e030e1ad484bc79cd7b181";
 
 /* ─── Helpers ─── */

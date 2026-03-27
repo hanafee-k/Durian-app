@@ -25,7 +25,8 @@ const RegisterPage = () => {
     if (pw.length < 6) { setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); return; }
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/register', formData);
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.post(`${API_BASE}/api/register`, formData);
       navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'ลงทะเบียนไม่สำเร็จ กรุณาลองใหม่');

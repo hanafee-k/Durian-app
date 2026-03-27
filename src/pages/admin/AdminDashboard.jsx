@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 
-const API = 'http://localhost:5000/api';
+const API = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:5000/api';
 
 const diseaseConfig = {
   'Leaf Blight':         { color: '#ef4444', bg: 'bg-red-500',     light: 'bg-red-50',     text: 'text-red-600',     icon: '🔥', label: 'ใบไหม้' },

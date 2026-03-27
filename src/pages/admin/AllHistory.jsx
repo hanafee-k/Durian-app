@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, ChevronLeft, ChevronRight, History, ScanLine, Trash2, AlertTriangle, X } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 
-const API = 'http://localhost:5000/api';
-const AVATAR_BASE = 'http://localhost:5000/uploads/';
+const API = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:5000/api';
+const AVATAR_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/uploads/` : 'http://localhost:5000/uploads/';
 
 const severityBadge = {
   danger: { bg: 'bg-red-50', text: 'text-red-600', dot: 'bg-red-500', label: 'อันตราย' },
