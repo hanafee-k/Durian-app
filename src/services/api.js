@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : "http://localhost:5000/api",
+  baseURL: "https://exorcistic-melania-argentiferous.ngrok-free.dev/api"
 });
 
 // ✅ แปะ Token ไปกับทุก Request อัตโนมัติ
