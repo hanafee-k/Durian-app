@@ -239,7 +239,7 @@ const ScanPage = () => {
     formData.append('image', file);
 
     try {
-      // ✅ มั่นใจว่า api ตัวนี้ชี้ไปที่ https://durian-app.onrender.com/api
+      // ✅ มั่นใจว่า api ตัวนี้ชี้ไปที่ http://localhost:5000/api
       const response = await api.post('/scan', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         // เพิ่ม timeout สำหรับการประมวลผลภาพใหญ่ๆ

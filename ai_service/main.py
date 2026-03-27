@@ -1,4 +1,8 @@
 import os
+# สั่งให้ใช้ Keras แบบเก่า (.h5) เพื่อแก้ปัญหา TensorFlow 2.16+ ที่เปลี่ยนไปใช้โฟลเดอร์
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import io
 import uvicorn
 import numpy as np
@@ -9,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+# เปิด CORS ให้ React/Node.js ยิงเข้ามาหาได้
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,28 +22,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 1. โหลดโมเดล TFLite (ประหยัด RAM สุดๆ) ---
-# มั่นใจว่าชื่อไฟล์ตรงกับที่พี่แปลงมา (model.tflite)
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "weights", "model.tflite")
+# --- 1. โหลดโมเดล .h5 แบบมาตรฐาน ---
+# ใช้ os.path.abspath เพื่อให้แน่ใจว่าระบบจะอ่านถูกโฟลเดอร์ ไม่ว่าจะรันไฟล์นี้จากที่ไหน
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "weights", "best_model_v3.h5")
 
 try:
-    print(f"⏳ Loading TFLite model from: {MODEL_PATH}")
-    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
-    interpreter.allocate_tensors()
-
-    # ดึงรายละเอียด Input/Output
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    print("✅ TFLite Model Loaded Successfully!")
+    print(f"⏳ Loading H5 model from: {MODEL_PATH}")
+    # ใช้ compile=False เพื่อเลี่ยงปัญหา Version mismatch ของ TensorFlow
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+    print("✅ H5 Model Loaded Successfully!")
 except Exception as e:
     print(f"❌ Error loading model: {e}")
+    # ถ้ายังไม่ได้อีก ให้ลองวิธีสุดท้ายนี้ (สำหรับ TF 2.16+)
+    try:
+        import tf_keras
+        model = tf_keras.models.load_model(MODEL_PATH, compile=False)
+        print("✅ H5 Model Loaded using tf_keras!")
+    except:
+        print("❌ All loading methods failed.")
 
-# --- 2. รายชื่อ Class (เรียงตามโฟลเดอร์ที่พี่เทรน) ---
+# --- 2. รายชื่อ Class ---
 class_names = ['Algal Leaf Spot', 'Healthy Leaf', 'Leaf Blight', 'Phomopsis Leaf Spot']
 
 @app.get("/")
 def read_root():
-    return {"status": "AI Service is running (TFLite + Confidence Check Mode)"}
+    return {"status": "AI Service is running (H5 Model Mode)"}
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
@@ -47,28 +56,24 @@ async def predict(file: UploadFile = File(...)):
         contents = await file.read()
         img = Image.open(io.BytesIO(contents)).convert('RGB')
         
-        # --- 3. Pre-processing ---
+        # --- 3. Pre-processing (ต้องตรงตามที่เทรนมา) ---
         img = img.resize((224, 224))
-        img_array = np.array(img, dtype=np.float32) / 255.0
+        img_array = np.array(img) / 255.0  # ทำ Rescaling 1./255
         img_array = np.expand_dims(img_array, axis=0)
 
-        # --- 4. สั่งให้ TFLite ทำนายผล (Inference) ---
-        interpreter.set_tensor(input_details[0]['index'], img_array)
-        interpreter.invoke()
+        # --- 4. ทำนายผลด้วยไฟล์ .h5 ---
+        predictions = model.predict(img_array)[0]
         
-        # ดึงผลลัพธ์ออกมา
-        predictions = interpreter.get_tensor(output_details[0]['index'])[0]
-        
-        # --- 5. ตรรกะตรวจสอบความแม่นยำ (ที่พี่เขียนไว้) ---
+        # --- 5. ตรวจสอบความแม่นยำ ---
         sorted_indices = np.argsort(predictions)[::-1]
         top1_score = predictions[sorted_indices[0]]
         top2_score = predictions[sorted_indices[1]]
         label = class_names[sorted_indices[0]]
 
-        # เช็คความ "ลังเล" (ถ้าคะแนนอันดับ 1 กับ 2 ใกล้กันเกินไป)
+        # เช็คความ "ลังเล" (ถ้าอันดับ 1 กับ 2 คะแนนใกล้กันเกินไป)
         is_confused = (top1_score - top2_score) < 0.4
         
-        # 🛡️ ด่านกักกัน: ถ้าคะแนนไม่ถึง 0.92 หรือ AI ลังเล
+        # 🛡️ ถ้าคะแนนต่ำกว่า 92% หรือ AI ลังเล ให้แจ้งว่าไม่ชัดเจน
         if top1_score < 0.92 or is_confused: 
             return {
                 "class": "ไม่ใช่ใบทุเรียน หรือภาพไม่ชัดเจน",
@@ -86,6 +91,5 @@ async def predict(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 if __name__ == "__main__":
-    # Render จะใช้ Port จาก Env ถ้าไม่มีจะใช้ 10000
-    port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # รันที่พอร์ต 8000 เพื่อให้ Node.js ยิงเข้ามาหาถูกที่
+    uvicorn.run(app, host="127.0.0.1", port=8000)
