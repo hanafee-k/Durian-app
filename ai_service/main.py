@@ -22,9 +22,15 @@ app.add_middleware(
 )
 
 # --- 2. โหลดโมเดล MobileNetV3 ---
-# ตรวจสอบว่าไฟล์อยู่ใน ai_service/weights/best_model_v3.h5
-MODEL_PATH = "weights/best_model_v3.h5"
-model = tf.keras.models.load_model(MODEL_PATH)
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "weights", "best_model_v3.h5")
+
+try:
+    # เพิ่ม compile=False เพื่อลดภาระการโหลด และใช้ตัวแปรแบบเจาะจง path
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+    print("✅ Model loaded successfully!")
+except Exception as e:
+    print(f"❌ Error loading model: {e}")
+    # ถ้าพังตรงนี้ จะได้เห็นสาเหตุชัดๆ ใน Log ครับ
 
 # --- 3. รายชื่อ Class (เรียงตามโฟลเดอร์ที่เทรน) ---
 class_names = ['Algal Leaf Spot', 'Healthy Leaf', 'Leaf Blight', 'Phomopsis Leaf Spot']
