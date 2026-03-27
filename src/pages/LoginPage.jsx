@@ -1,7 +1,9 @@
+// src/pages/LoginPage.jsx
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { Mail, Lock, Eye, EyeOff, Leaf, AlertCircle, Loader2 } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google'; // นำเข้า GoogleLogin
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -10,6 +12,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // ฟังก์ชั่น Login แบบปกติ
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -18,12 +21,38 @@ const LoginPage = () => {
       const res = await api.post('/login', { email, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      window.location.href = '/';
+      window.location.href = res.data.user.isAdmin ? '/admin' : '/';
     } catch (err) {
       setError(err.response?.data?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     } finally {
       setLoading(false);
     }
+  };
+
+  // ฟังก์ชั่นจัดการการ Login ด้วย Google สำเร็จ
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setLoading(true);
+    try {
+      // ส่ง jwt token ที่ได้จาก Google ไปตรวจสอบกับ Backend ของเรา
+      const res = await api.post('/auth/google', { 
+        token: credentialResponse.credential 
+      });
+      
+      // บันทึก Session เหมือนการ Login ปกติ
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      window.location.href = res.data.user.isAdmin ? '/admin' : '/';
+      
+    } catch (err) {
+      setError(err.response?.data?.message || 'เกิดข้อผิดพลาดในการลงชื่อเข้าใช้ด้วย Google');
+      setLoading(false);
+    }
+  };
+
+  // ฟังก์ชั่นเมื่อ Google Login ล้มเหลวจากฝั่ง Client
+  const handleGoogleError = () => {
+    setError('การเชื่อมต่อกับ Google ล้มเหลว กรุณาลองใหม่อีกครั้ง');
   };
 
   return (
@@ -131,8 +160,21 @@ const LoginPage = () => {
           {/* Divider */}
           <div className="flex items-center gap-4 my-7">
             <div className="flex-1 h-px bg-slate-100" />
-            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">หรือ</span>
+            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">หรือเข้าสู่ระบบด้วย</span>
             <div className="flex-1 h-px bg-slate-100" />
+          </div>
+
+          {/* 🌐 Google Login Button */}
+          <div className="flex justify-center mb-6">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              shape="pill"
+              theme="outline"
+              size="large"
+              width="320"
+              text="continue_with"
+            />
           </div>
 
           {/* Register link */}

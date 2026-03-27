@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema({
   },
   password: { 
     type: String, 
-    required: true 
+    required: false // ปรับเป็น false เพื่อรองรับ Google Login (บางคนไม่มีรหัสผ่าน)
   },
   
   // ข้อมูลโปรไฟล์ (อ้างอิงจากหน้า ProfilePage เดิมของคุณ)
@@ -40,6 +40,10 @@ const UserSchema = new mongoose.Schema({
   },
   
   // ข้อมูลระบบ
+  isAdmin: {
+    type: Boolean,
+    default: false
+  },
   createdAt: { 
     type: Date, 
     default: Date.now 

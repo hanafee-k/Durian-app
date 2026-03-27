@@ -1,11 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import {
   Camera, Upload, AlertCircle, X, CheckCircle,
-  Scissors, Phone, Sparkles, ArrowLeft, Microscope,
+  Scissors, Sparkles, ArrowLeft, Microscope,
   Info, Loader2, Image as ImageIcon, AlertTriangle,
-  Droplets, ShieldAlert
+  Droplets, ShieldAlert, SwitchCamera, ZoomIn
 } from 'lucide-react';
 
 // 🚀 ข้อมูลแนวทางการรักษา "แบบเต็ม 100%" 
@@ -111,15 +111,22 @@ const ScanPage = () => {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
 
+  // Camera modal states
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [facingMode, setFacingMode] = useState('environment');
+  const [stream, setStream] = useState(null);
+
   const fileRef = useRef();
-  const camRef = useRef();
+  const videoRef = useRef();
+  const canvasRef = useRef();
 
   const handleFile = useCallback(f => {
     setError('');
     setAiResult(null);
     setFinalResult(null);
     if (!f) return;
-    if (!['image/jpeg', 'image/png'].includes(f.type)) { setError('รองรับเฉพาะไฟล์ JPG / PNG เท่านั้น'); return; }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) { setError('รองรับเฉพาะไฟล์ JPG / PNG เท่านั้น'); return; }
     if (f.size > 5e6) { setError('ขนาดไฟล์ต้องไม่เกิน 5 MB'); return; }
 
     setFile(f);
@@ -127,6 +134,97 @@ const ScanPage = () => {
     r.onload = e => setPreview(e.target.result);
     r.readAsDataURL(f);
   }, []);
+
+  // ── Camera functions ──
+  const startCamera = useCallback(async (facing = facingMode) => {
+    setCameraError('');
+    try {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+      setStream(newStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream;
+      }
+    } catch (err) {
+      console.error('Camera error:', err);
+      if (err.name === 'NotAllowedError') {
+        setCameraError('กรุณาอนุญาตการเข้าถึงกล้องในเบราว์เซอร์');
+      } else if (err.name === 'NotFoundError') {
+        setCameraError('ไม่พบกล้องในอุปกรณ์นี้');
+      } else {
+        setCameraError('ไม่สามารถเปิดกล้องได้: ' + err.message);
+      }
+    }
+  }, [stream, facingMode]);
+
+  const stopCamera = useCallback(() => {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      setStream(null);
+    }
+  }, [stream]);
+
+  const openCamera = useCallback(() => {
+    setCameraOpen(true);
+    setCameraError('');
+  }, []);
+
+  const closeCamera = useCallback(() => {
+    stopCamera();
+    setCameraOpen(false);
+    setCameraError('');
+  }, [stopCamera]);
+
+  // Start camera when modal opens
+  useEffect(() => {
+    if (cameraOpen) {
+      // Small delay to allow the video element to mount
+      const timer = setTimeout(() => startCamera(facingMode), 100);
+      return () => clearTimeout(timer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOpen]);
+
+  // Update video srcObject when stream changes
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => stopCamera();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const flipCamera = useCallback(async () => {
+    const newFacing = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(newFacing);
+    await startCamera(newFacing);
+  }, [facingMode, startCamera]);
+
+  const capturePhoto = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+      if (blob) {
+        const capturedFile = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+        handleFile(capturedFile);
+        closeCamera();
+      }
+    }, 'image/jpeg', 0.92);
+  }, [handleFile, closeCamera]);
 
   const analyze = async () => {
     if (!file) return;
@@ -200,6 +298,99 @@ const ScanPage = () => {
   return (
     <div className="min-h-screen bg-[#fafaf8] font-['IBM_Plex_Sans_Thai'] pb-24 lg:pb-12 text-slate-800">
 
+      {/* ── Camera Modal ── */}
+      {cameraOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0f1923] rounded-[32px] shadow-2xl w-full max-w-xl overflow-hidden border border-white/10">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-500 animate-pulse flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-white" />
+                </div>
+                <span className="text-white font-black font-['Prompt'] text-lg">กล้องถ่ายภาพ</span>
+              </div>
+              <button onClick={closeCamera} className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-colors">
+                <X size={20} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* Camera View */}
+            <div className="relative mx-4 rounded-[24px] overflow-hidden bg-black" style={{ aspectRatio: '4/3' }}>
+              {cameraError ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center">
+                  <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <AlertCircle className="w-8 h-8 text-red-400" />
+                  </div>
+                  <p className="text-white/80 font-bold font-['Prompt'] text-sm">{cameraError}</p>
+                  <button
+                    onClick={() => startCamera(facingMode)}
+                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-2xl font-bold font-['Prompt'] text-sm hover:bg-emerald-500 transition-colors"
+                  >
+                    ลองใหม่
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Viewfinder corners */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-4 left-4 w-8 h-8 border-t-[3px] border-l-[3px] border-emerald-400 rounded-tl-lg" />
+                    <div className="absolute top-4 right-4 w-8 h-8 border-t-[3px] border-r-[3px] border-emerald-400 rounded-tr-lg" />
+                    <div className="absolute bottom-4 left-4 w-8 h-8 border-b-[3px] border-l-[3px] border-emerald-400 rounded-bl-lg" />
+                    <div className="absolute bottom-4 right-4 w-8 h-8 border-b-[3px] border-r-[3px] border-emerald-400 rounded-br-lg" />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center justify-between px-8 py-6">
+              {/* Upload from gallery */}
+              <button
+                onClick={() => { closeCamera(); fileRef.current?.click(); }}
+                className="flex flex-col items-center gap-1.5 text-white/60 hover:text-white transition-colors"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                  <ImageIcon size={22} />
+                </div>
+                <span className="text-[10px] font-bold">คลังรูป</span>
+              </button>
+
+              {/* Capture button */}
+              <button
+                onClick={capturePhoto}
+                disabled={!!cameraError}
+                className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-2xl shadow-white/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <div className="w-14 h-14 rounded-full border-4 border-[#0f1923]/20 bg-white" />
+              </button>
+
+              {/* Flip camera */}
+              <button
+                onClick={flipCamera}
+                disabled={!!cameraError}
+                className="flex flex-col items-center gap-1.5 text-white/60 hover:text-white transition-colors disabled:opacity-30"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                  <SwitchCamera size={22} />
+                </div>
+                <span className="text-[10px] font-bold">พลิกกล้อง</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Hidden canvas for photo capture */}
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+      )}
+
       <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-colors border border-slate-200/60">
@@ -212,7 +403,7 @@ const ScanPage = () => {
       <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-          {/* ── 1. ส่วนอัปโหลดรูปภาพ (ตามภาพ Reference) ── */}
+          {/* ── 1. ส่วนอัปโหลดรูปภาพ ── */}
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white p-8 rounded-[32px] shadow-xl shadow-slate-200/40 border border-slate-100">
               <h2 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2.5 font-['Prompt']">
@@ -228,13 +419,13 @@ const ScanPage = () => {
                 </div>
               )}
 
+              {/* Drag & Drop Upload */}
               <div
                 onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => fileRef.current?.click()}
-                className={`border-[2.5px] border-dashed rounded-[28px] p-10 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-[280px] ${dragOver ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-300 bg-slate-50 hover:bg-emerald-50/30 hover:border-emerald-400'
-                  }`}
+                className={`border-[2.5px] border-dashed rounded-[28px] p-10 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-[220px] ${dragOver ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-300 bg-slate-50 hover:bg-emerald-50/30 hover:border-emerald-400'}`}
               >
                 <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-5 border border-slate-100">
                   <Upload className="w-8 h-8 text-emerald-500" />
@@ -244,16 +435,19 @@ const ScanPage = () => {
                 <input ref={fileRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={e => handleFile(e.target.files[0])} />
               </div>
 
-              <div className="relative flex py-8 items-center">
+              <div className="relative flex py-6 items-center">
                 <div className="flex-grow border-t border-slate-200"></div>
                 <span className="mx-4 text-slate-300 text-xs font-black uppercase font-sans tracking-widest">OR</span>
                 <div className="flex-grow border-t border-slate-200"></div>
               </div>
 
-              <button onClick={() => camRef.current?.click()} className="w-full bg-emerald-600 text-white py-4 rounded-[20px] font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-600/20 hover:bg-emerald-500 hover:-translate-y-0.5 active:scale-95 transition-all font-['Prompt'] text-[15px]">
-                <Camera size={20} /> ถ่ายภาพใบ
+              {/* Camera Button — opens in-browser live camera */}
+              <button
+                onClick={openCamera}
+                className="w-full bg-emerald-600 text-white py-4 rounded-[20px] font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-600/20 hover:bg-emerald-500 hover:-translate-y-0.5 active:scale-95 transition-all font-['Prompt'] text-[15px]"
+              >
+                <Camera size={20} /> ถ่ายภาพด้วยกล้อง
               </button>
-              <input ref={camRef} type="file" accept="image/jpeg,image/png" capture="environment" className="hidden" onChange={e => handleFile(e.target.files[0])} />
             </div>
           </div>
 
