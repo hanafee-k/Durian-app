@@ -75,4 +75,8 @@ async def predict(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # 1. ดึงค่า PORT จาก Render (ถ้าไม่มีให้ใช้ 8000 สำหรับเทสในเครื่อง)
+    port = int(os.environ.get("PORT", 8000))
+    
+    # 2. สั่งรัน uvicorn โดยใช้ตัวแปร port ที่ดึงมา
+    uvicorn.run(app, host="0.0.0.0", port=port)
