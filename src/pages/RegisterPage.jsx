@@ -25,7 +25,7 @@ const RegisterPage = () => {
     if (pw.length < 6) { setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); return; }
     setLoading(true);
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const API_BASE = import.meta.env.VITE_API_URL || 'https://durian-app.onrender.com';
       await axios.post(`${API_BASE}/api/register`, formData);
       navigate('/login');
     } catch (err) {

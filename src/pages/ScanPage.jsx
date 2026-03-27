@@ -187,7 +187,7 @@ const ScanPage = () => {
       const timer = setTimeout(() => startCamera(facingMode), 100);
       return () => clearTimeout(timer);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraOpen]);
 
   // Update video srcObject when stream changes
@@ -200,7 +200,7 @@ const ScanPage = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => stopCamera();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const flipCamera = useCallback(async () => {
@@ -226,6 +226,8 @@ const ScanPage = () => {
     }, 'image/jpeg', 0.92);
   }, [handleFile, closeCamera]);
 
+  // ... (ส่วนการนำเข้า และ Guide ข้อมูลเหมือนเดิมของพี่เลยครับ) ...
+
   const analyze = async () => {
     if (!file) return;
     setLoading(true);
@@ -237,8 +239,11 @@ const ScanPage = () => {
     formData.append('image', file);
 
     try {
+      // ✅ มั่นใจว่า api ตัวนี้ชี้ไปที่ https://durian-app.onrender.com/api
       const response = await api.post('/scan', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        // เพิ่ม timeout สำหรับการประมวลผลภาพใหญ่ๆ
+        timeout: 45000
       });
 
       const resData = response.data.data;
@@ -252,22 +257,24 @@ const ScanPage = () => {
       };
 
       setAiResult(baseResult);
-
-      if (!diseaseInfo.isDisease) {
-        setFinalResult(baseResult);
-      }
+      if (!diseaseInfo.isDisease) setFinalResult(baseResult);
 
     } catch (err) {
       console.error("Analysis Error:", err);
+      // ✅ จัดการ Error ให้แสดงผลสวยงามบนมือถือ
       if (err.response?.status === 422) {
-        setError(err.response.data.message);
+        setError(err.response.data.message || 'AI ไม่แน่ใจว่าเป็นใบทุเรียนหรือไม่ กรุณาถ่ายใหม่ให้ชัดเจนครับ');
+      } else if (err.code === 'ECONNABORTED') {
+        setError('การเชื่อมต่อใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง');
       } else {
-        setError('เกิดข้อผิดพลาดในการเชื่อมต่อระบบ');
+        setError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ AI ได้ในขณะนี้');
       }
     } finally {
       setLoading(false);
     }
   };
+
+  // ... (ส่วนที่เหลือของ Component เหมือนเดิมครับ) ...
 
   const handleSeveritySelect = async (level) => {
     setLoading(true);

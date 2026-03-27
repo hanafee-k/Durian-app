@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, ShieldCheck, ShieldOff, Trash2, ScanLine, Users, AlertTriangle } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 
-const API = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:5000/api';
-const AVATAR_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/uploads/` : 'http://localhost:5000/uploads/';
+const API = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'https://durian-app.onrender.com/api';
+const AVATAR_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/uploads/` : 'https://durian-app.onrender.com/uploads/';
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);

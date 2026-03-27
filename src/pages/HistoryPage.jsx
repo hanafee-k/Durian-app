@@ -7,7 +7,7 @@ import {
   Trash2, AlertTriangle, Search, Filter, ScanLine, User, XCircle, MapPin
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "https://durian-app.onrender.com";
 
 /* ─── Helpers ─── */
 const thaiDate = d => {
