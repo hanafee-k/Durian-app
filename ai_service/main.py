@@ -1,8 +1,6 @@
 import os
-# สั่งให้ใช้ Keras แบบเก่า (.h5) เพื่อแก้ปัญหา TensorFlow 2.16+ ที่เปลี่ยนไปใช้โฟลเดอร์
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
 import io
 import uvicorn
 import numpy as np
@@ -12,7 +10,6 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
-
 # เปิด CORS ให้ React/Node.js ยิงเข้ามาหาได้
 app.add_middleware(
     CORSMiddleware,
@@ -21,8 +18,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# --- 1. โหลดโมเดล .h5 แบบมาตรฐาน ---
 # ใช้ os.path.abspath เพื่อให้แน่ใจว่าระบบจะอ่านถูกโฟลเดอร์ ไม่ว่าจะรันไฟล์นี้จากที่ไหน
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "weights", "best_model_v3.h5")

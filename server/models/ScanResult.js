@@ -14,3 +14,7 @@ const ScanResultSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('ScanResult', ScanResultSchema);
+
+
+
+
